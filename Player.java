@@ -288,7 +288,7 @@ public class Player implements wtr.sim.Player {
                 interference_counter = 0;
             } else {
                 ++interference_counter;
-                if (interference_counter > 5 || more_wisdom == 0) {
+                if (interference_counter > 1 || more_wisdom == 0) {
                     if (more_wisdom == 0) {
                         println("Done talking with " + chat_id);
                     } else {
