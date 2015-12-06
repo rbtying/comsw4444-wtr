@@ -124,7 +124,7 @@ public class Player implements wtr.sim.Player {
 
         // compute a point that is 0.5 away
         println("teleport computed to  " + tgt.id);
-        return teleport(tgt, 0.5, id_lut);
+        return teleport(tgt, 0.52, id_lut);
     }
 
     private Point teleportToHighestScoreDensity(Map<Integer, Point> id_lut) {
@@ -233,7 +233,7 @@ public class Player implements wtr.sim.Player {
 
                 // compute squared distance
                 // start chatting if in range
-                if (inRange(self, p, 0.5, 2.0)) {
+                if (inRange(self, p, 0.5, 0.6)) {
                     very_close.add(p);
                 }
             }
@@ -288,7 +288,7 @@ public class Player implements wtr.sim.Player {
                 interference_counter = 0;
             } else {
                 ++interference_counter;
-                if (interference_counter > 5 || more_wisdom == 0) {
+                if (interference_counter > 1 || more_wisdom == 0) {
                     if (more_wisdom == 0) {
                         println("Done talking with " + chat_id);
                     } else {
