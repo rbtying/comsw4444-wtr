@@ -284,11 +284,12 @@ public class Player implements wtr.sim.Player {
             println("was chatting with " + chat_id + " with remaining wisdom " + more_wisdom + " wiser: " +
                     (wiser ? 1 : 0) + " Wus: " + Wus[chat_id]);
             move = new Point(0.0, 0.0, chat_id);
+            int wait_for = Math.max((this.friends + this.strangers + 1)/100, 1);
             if (wiser) {
                 interference_counter = 0;
             } else {
                 ++interference_counter;
-                if (interference_counter > 1 || more_wisdom == 0) {
+                if (interference_counter > wait_for || more_wisdom == 0) {
                     if (more_wisdom == 0) {
                         println("Done talking with " + chat_id);
                     } else {
