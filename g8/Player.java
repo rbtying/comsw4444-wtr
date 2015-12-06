@@ -284,7 +284,7 @@ public class Player implements wtr.sim.Player {
             println("was chatting with " + chat_id + " with remaining wisdom " + more_wisdom + " wiser: " +
                     (wiser ? 1 : 0) + " Wus: " + Wus[chat_id]);
             move = new Point(0.0, 0.0, chat_id);
-            int wait_for = Math.max((this.friends + this.strangers + 1)/100, 1);
+            int wait_for = Math.max((this.friends + this.strangers + 2)/100, 1);
             if (wiser) {
                 interference_counter = 0;
             } else {
