@@ -24,11 +24,12 @@ function process(data)
 	data = data.split(",");
 	// parse the header
 	var N = parse_integer(data[0]);
-	if (data.length != 4 + N * 10)
+	if (data.length != 5 + N * 10)
 		throw "Invalid data format: " + data.length + " != " + a;
 	var side = parse_integer(data[1]);
 	var clock = data[2].trim();
-	var refresh = parse_integer(data[3]);
+	var max_score = parse_integer(data[3]);
+	var refresh = parse_integer(data[4]);
 	// parse the players and their scores
 	var group = new Array(N);
 	var x_curr = new Array(N);
@@ -40,7 +41,7 @@ function process(data)
 	var wisdom = new Array(N);
 	var rel = new Array(N);
 	var score = new Array(N);
-	var a = 4;
+	var a = 5;
 	for (var i = 0 ; i != N ; ++i) {
 		group[i] = data[a++].trim();
 		x_curr[i] = (parse_float(data[a++]) / side) * size + x_base;
@@ -161,12 +162,15 @@ function process(data)
 	ctx.lineWidth = 1;
 	for (var i = 0 ; i != N2 ; ++i) {
 		var j = i + N2;
+		ctx.strokeStyle = (score[i] == max_score ? "red" : "black");
 		ctx.strokeText(score[i], L, i * 18.5 + 50);
+		ctx.strokeStyle = (score[j] == max_score ? "red" : "black");
 		ctx.strokeText(score[j], R, i * 18.5 + 50);
 	}
 	L += 40;
 	R += 40;
 	ctx.lineWidth = 2;
+	ctx.strokeStyle = "black";
 	ctx.font = "15px Arial";
 	ctx.strokeText("chat", L, 30);
 	ctx.strokeText("chat", R, 30);

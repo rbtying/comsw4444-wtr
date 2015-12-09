@@ -11,6 +11,8 @@ class Simulator {
 
 	private static final String root = "wtr";
 
+	private static final int soulmate_multiplier = 1;
+
 	public static void main(String[] args)
 	{
 		int friends = 10;
@@ -24,7 +26,7 @@ class Simulator {
 		long gui_refresh = 100;
 		String[] groups = null;
 		ArrayList <Class <Player> > classes = null;
-		HashSet <String> group_set = new HashSet <String> ();
+		TreeSet <String> group_set = new TreeSet <String> ();
 		group_set.add("g0");
 		try {
 			for (int a = 0 ; a != args.length ; ++a)
@@ -106,36 +108,57 @@ class Simulator {
 		// start game
 		int[] score = new int [N];
 		boolean[] timeout = new boolean [N];
+		boolean[] soulmate = new boolean [N];
+		int max_score = -1;
 		try {
-			game(groups, classes, friends, strangers,
-			     room_side, turns, score, timeout,
-			     init_timeout, play_timeout,
-			     gui, gui_refresh, verbose);
+			max_score = game(groups, classes, friends, strangers,
+			                 room_side, turns, score, soulmate,
+			                 timeout, init_timeout, play_timeout,
+			                 gui, gui_refresh, verbose);
 		} catch (Exception e) {
 			System.err.println("Error during the game: " + e.getMessage());
 			e.printStackTrace();
 			System.exit(1);
 		}
 		for (int i = 0 ; i != score.length ; ++i)
-			System.err.println("Player " + i + " (" + groups[i] + ") scored: " + score[i]);
+			System.err.println("Player " + i + " (" + groups[i] +
+			                   ") scored: " + score[i] +
+			                   (score[i] == max_score ? " (maximum score) " : " ") +
+			                   (soulmate[i] ? "[soulmate chat]" : ""));
+		System.err.println("Available wisdom: " + max_score);
+		int group_instances = N / group_set.size();
+		int i = 0;
+		for (String group : group_set) {
+			int min_group_score = max_score + 1;
+			int max_group_score = 0;
+			for (int j = 0 ; j != group_instances ; ++j, ++i) {
+				if (max_group_score < score[i])
+					max_group_score = score[i];
+				if (min_group_score > score[i])
+					min_group_score = score[i];
+			}
+			System.err.println("Group " + group + ": [" + min_group_score +
+			                   ", " + max_group_score + "]");
+		}
 		System.exit(0);
 	}
 
 	private static final Random random = new Random();
 
-	private static void game(String[] groups,
-	                         ArrayList <Class <Player> > classes,
-	                         int friends,
-	                         int strangers,
-	                         int room_side,
-	                         int turns,
-	                         int[] score,
-	                         boolean[] timeout,
-	                         long init_timeout,
-	                         long play_timeout,
-	                         boolean gui,
-	                         long gui_refresh,
-	                         boolean verbose) throws Exception
+	private static int game(String[] groups,
+	                        ArrayList <Class <Player> > classes,
+	                        int friends,
+	                        int strangers,
+	                        int room_side,
+	                        int turns,
+	                        int[] score,
+	                        boolean[] soulmate,
+	                        boolean[] timeout,
+	                        long init_timeout,
+	                        long play_timeout,
+	                        boolean gui,
+	                        long gui_refresh,
+	                        boolean verbose) throws Exception
 	{
 		int N = friends + strangers + 2;
 		if (classes.size() != N || groups.length != N ||
@@ -161,11 +184,15 @@ class Simulator {
 				if (W[i][j] == 50) {
 					verify(W[j][i] == 50);
 					F[i][j] = F[j][i] = true;
-				} else if (W[i][j] == 200) {
-					verify(W[j][i] == 200);
+				} else if (W[i][j] == 200 * soulmate_multiplier) {
+					verify(W[j][i] == 200 * soulmate_multiplier);
 					Sm[i] = j;
 					Sm[j] = i;
 				}
+		// compute max score
+		int max_score = 0;
+		for (int i = 0 ; i != N ; ++i)
+			max_score += W[i][0];
 		// initialize players
 		Timer[] threads = new Timer [N];
 		Player[] players = new Player [N];
@@ -218,8 +245,8 @@ class Simulator {
 		for (int turn = 0 ; turn != turns ; ++turn) {
 			String clock = clock(turn * 6);
 			// GUI state
-			if (gui) gui(server, state(groups, L, Lp, score, W, C, F, Sm,
-			                           room_side, clock, gui_refresh));
+			if (gui) gui(server, state(groups, L, Lp, score, max_score, W, C,
+			                           F, Sm, room_side, clock, gui_refresh));
 			if (out != null) println(out, clock);
 			// call play function of players
 			for (int i = 0 ; i != N ; ++i) {
@@ -251,8 +278,7 @@ class Simulator {
 				println(out, i + " views " + (k - 1) + " people from ("
 				               + L[i].x + ", " + L[i].y + ")");
 				// get next move from player
-				final int j = M[i].id;
-				final int more_wisdom = W[j][i];
+				final int more_wisdom = W[M[i].id][i];
 				final boolean wiser = C[i];
 				final Player player = players[i];
 				threads[i].call_start(new Callable <Point> () {
@@ -400,6 +426,7 @@ class Simulator {
 					println(out, i + " has no more wisdom to gain from " + j);
 					continue;
 				}
+				if (Sm[i] == j) soulmate[i] = true;
 				// search for closest player
 				double dx = L[i].x - L[j].x;
 				double dy = L[i].y - L[j].y;
@@ -414,18 +441,20 @@ class Simulator {
 				// gain wisdom if closest
 				if (!c) println(out, i + " cannot gain wisdom from " + j);
 				else {
-					W[j][i]--;
+					int w = Sm[i] == j ? soulmate_multiplier : 1;
+					W[j][i] -= w;
+					score[i] += w;
 					C[i] = true;
-					score[i]++;
 					println(out, i + " gained wisdom from " + j);
 				}
 			}
 		}
 		if (gui) {
-			gui(server, state(groups, L, Lp, score, W, C, F, Sm,
-			                  room_side, clock(turns * 6), -1));
+			gui(server, state(groups, L, Lp, score, max_score, W, C,
+			                  F, Sm, room_side, clock(turns * 6), -1));
 			server.close();
 		}
+		return max_score;
 	}
 
 	private static String clock(int seconds)
@@ -519,7 +548,7 @@ class Simulator {
 				verify(F[i][j] && F[j][i]);
 				verify(W[i][j] == 50 && W[j][i] == 50);
 				F[i][j] = F[j][i] = false;
-				W[i][j] = W[j][i] = 200;
+				W[i][j] = W[j][i] = 200 * soulmate_multiplier;
 			}
 		}
 		// generate how many strangers give 0, 10, and 20 points
@@ -540,19 +569,28 @@ class Simulator {
 							break;
 						}
 				}
+		// verify wisdom array
+		int s1 = 0;
 		for (int i = 0 ; i != N ; ++i)
-			for (int j = 0 ; j != N ; ++j)
+			s1 += W[i][0];
+		for (int j = 0 ; j != N ; ++j) {
+			int s2 = 0;
+			for (int i = 0 ; i != N ; ++i) {
+				s2 += W[i][j];
 				verify(W[i][j] >= 0);
+			}
+			verify(s1 == s2);
+		}
 		return W;
 	}
 
-	private static boolean[][] random_symmetric_graph(int nodes, int degrees)
+	private static boolean[][] random_symmetric_graph(int nodes, int degree)
 	{
-		if (nodes <= 0 || degrees <= 0 || degrees >= nodes)
+		if (nodes <= 0 || degree <= 0 || degree >= nodes)
 			throw new IllegalArgumentException();
 		// all node connections (symmetric)
 		boolean[][] C = new boolean [nodes][nodes];
-		for (int d = 0 ; d != degrees ; ++d) {
+		for (int d = 0 ; d != degree ; ++d) {
 			// mark nodes you connect per turn
 			boolean[] M = new boolean [nodes];
 			int j, k = 0;
@@ -599,7 +637,6 @@ class Simulator {
 					// connect two pairs of nodes
 					C[i][i2] = C[i2][i] = true;
 					C[j][j2] = C[j2][j] = true;
-					// 
 				} else {
 					// pick a disconnected node
 					k = random.nextInt(k) + 1;
@@ -662,6 +699,7 @@ class Simulator {
 	                            Point[] locations,
 	                            Point[] previous_locations,
 	                            int[] score,
+	                            int max_score,
 	                            int[][] wisdom,
 	                            boolean[] wiser,
 	                            boolean[][] friends,
@@ -672,19 +710,21 @@ class Simulator {
 	{
 		int N = groups.length;
 		StringBuffer buf = new StringBuffer();
-		buf.append(N + ", " + side + ", " + clock + ", " + gui_refresh);
+		buf.append(N + "," + side + "," + clock + "," +
+		           max_score + "," + gui_refresh);
 		for (int i = 0 ; i != N ; ++i) {
 			int j = locations[i].id;
-			buf.append(", " + groups[i] +
-			           ", " + locations[i].x +
-			           ", " + locations[i].y +
-			           ", " + previous_locations[i].x +
-			           ", " + previous_locations[i].y +
-			           ", " + j +
-			           ", " + (wiser[i] ? 1 : 0) +
-			           ", " + wisdom[j][i] +
-			           ", " + (friends[i][j] ? 1 : (j == soulmates[i] ? 2 : 0)) +
-			           ", " + score[i]);
+			buf.append("," + groups[i] +
+			           "," + locations[i].x +
+			           "," + locations[i].y +
+			           "," + previous_locations[i].x +
+			           "," + previous_locations[i].y +
+			           "," + j +
+			           "," + (wiser[i] ? 1 : 0) +
+			           "," + wisdom[j][i] +
+			           "," + (friends[i][j] ? 1 :
+			                 (j == soulmates[i] ? 2 : 0)) +
+			           "," + score[i]);
 		}
 		return buf.toString();
 	}
@@ -751,7 +791,6 @@ class Simulator {
 		return files;
 	}
 
-	// last modified
 	private static long last_modified(Iterable <File> files)
 	{
 		long last_date = 0;
@@ -763,7 +802,6 @@ class Simulator {
 		return last_date;
 	}
 
-	// compile and load
 	private static Class <Player> load(String group) throws IOException,
 	                                       ReflectiveOperationException
 	{
