@@ -283,13 +283,14 @@ public class Player implements wtr.sim.Player {
 
 			// not conversing with anyone
 			if (players[i].id != chat_ids[i]) {
+				continue;
+			} else {
 				if (W[players[i].id] > maxWisdom) {
 
 					maxWisdom = W[players[i].id];
 					maxTarget = players[i];
 				}
-			} else
-				continue;
+			}
 			// swap with maxWisdom and maxTarget if wiser
 			 //System.out.println("this wisdom: " + W[players[i].id]);
 			
